@@ -1,7 +1,8 @@
 import 'dart:io';
 
-import '../helpers/contact_helper.dart';
 import 'package:flutter/material.dart';
+
+import '../helpers/contact_helper.dart';
 
 class HomePage extends StatefulWidget {
   @override

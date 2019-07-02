@@ -128,7 +128,7 @@ class _ContactPageState extends State<ContactPage> {
           builder: (context) {
             return AlertDialog(
               title: Text("Descartar Alterações?"),
-              content: Text("Se sair as alterações serão perdidadas."),
+              content: Text("Se sair as alterações serão perdidas."),
               actions: <Widget>[
                 FlatButton(
                   child: Text("Cancelar"),

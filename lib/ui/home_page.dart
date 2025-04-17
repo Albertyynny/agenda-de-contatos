@@ -9,210 +9,217 @@ import '../helpers/contact_helper.dart';
 enum OrderOptions { orderaz, orderza }
 
 class HomePage extends StatefulWidget {
+  final Function(bool) toggleTheme;
+  final bool isDarkTheme;
+  
+  const HomePage({
+    super.key,
+    required this.toggleTheme,
+    required this.isDarkTheme,
+  });
+
   @override
-  _HomePageState createState() => _HomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  ContactHelper helper = ContactHelper();
-
-  List<Contact> contacts = List();
+  final ContactHelper helper = ContactHelper.instance;
+  List<Contact> contacts = [];
 
   @override
   void initState() {
     super.initState();
-
     _getAllContacts();
+  }
+
+  void _getAllContacts() async {
+    final list = await helper.getAllContacts();
+    if (mounted) setState(() => contacts = list);
+  }
+
+  void _orderList(OrderOptions result) {
+    switch (result) {
+      case OrderOptions.orderaz:
+        contacts.sort((a, b) => a.name!.compareTo(b.name!));
+        break;
+      case OrderOptions.orderza:
+        contacts.sort((a, b) => b.name!.compareTo(a.name!));
+        break;
+    }
+    setState(() {});
+  }
+
+  void _showContactPage({Contact? contact}) async {
+  final recContact = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => ContactPage(contact: contact),
+    ),
+  );
+
+    
+    if (recContact != null && mounted) {
+      contact != null 
+          ? await helper.updateContact(recContact)
+          : await helper.saveContact(recContact);
+      _getAllContacts();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Contatos"),
-        backgroundColor: Colors.red,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Contatos"),
+            const SizedBox(width: 10),
+            IconButton(
+              icon: Icon(
+                widget.isDarkTheme ? Icons.light_mode : Icons.dark_mode,
+                color: Colors.white,
+              ),
+              onPressed: () => widget.toggleTheme(!widget.isDarkTheme),
+            ),
+          ],
+        ),
+        backgroundColor: Theme.of(context).colorScheme.primary,
         centerTitle: true,
-        actions: <Widget>[
+        actions: [
           PopupMenuButton<OrderOptions>(
-            itemBuilder: (context) => <PopupMenuEntry<OrderOptions>>[
-                  const PopupMenuItem<OrderOptions>(
-                    child: Text("Ordernar de A-Z"),
-                    value: OrderOptions.orderaz,
-                  ),
-                  const PopupMenuItem<OrderOptions>(
-                    child: Text("Ordernar de Z-A"),
-                    value: OrderOptions.orderza,
-                  )
-                ],
             onSelected: _orderList,
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: OrderOptions.orderaz,
+                child: Text("Ordenar de A-Z"),
+              ),
+              const PopupMenuItem(
+                value: OrderOptions.orderza,
+                child: Text("Ordenar de Z-A"),
+              )
+            ],
           ),
         ],
       ),
-      backgroundColor: Colors.white,
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showContactPage();
-        },
-        child: Icon(Icons.add),
-        backgroundColor: Colors.red,
+        onPressed: () => _showContactPage(),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: const Icon(Icons.add),
       ),
       body: ListView.builder(
-        padding: EdgeInsets.all(10.0),
+        padding: const EdgeInsets.all(10.0),
         itemCount: contacts.length,
-        itemBuilder: (context, index) {
-          return _contactCard(context, index);
-        },
+        itemBuilder: (context, index) => _contactCard(context, index),
       ),
     );
   }
 
   Widget _contactCard(BuildContext context, int index) {
     return GestureDetector(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(10.0),
-            child: Row(
-              children: <Widget>[
-                Container(
-                  width: 80.0,
-                  height: 80.0,
-                  decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                          image: contacts[index].img != null
-                              ? FileImage(File(contacts[index].img))
-                              : AssetImage("images/person.png"),
-                          fit: BoxFit.cover)),
-                ),
-                Padding(
-                  padding: EdgeInsets.only(left: 10.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        contacts[index].name ?? "",
-                        style: TextStyle(
-                            fontSize: 22.0, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        contacts[index].email ?? "",
-                        style: TextStyle(
-                          fontSize: 18.0,
-                        ),
-                      ),
-                      Text(
-                        contacts[index].phone ?? "",
-                        style: TextStyle(fontSize: 18.0),
-                      )
-                    ],
+      onTap: () => _showOptions(context, index),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Row(
+            children: [
+              Container(
+                width: 80.0,
+                height: 80.0,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    image: contacts[index].img != null
+                        ? FileImage(File(contacts[index].img!))
+                        : const AssetImage("assets/person.png") as ImageProvider,
+                    fit: BoxFit.cover,
                   ),
-                )
-              ],
-            ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      contacts[index].name ?? "",
+                      style: const TextStyle(
+                          fontSize: 22.0, 
+                          fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      contacts[index].email ?? "",
+                      style: const TextStyle(fontSize: 18.0),
+                    ),
+                    Text(
+                      contacts[index].phone ?? "",
+                      style: const TextStyle(fontSize: 18.0),
+                    )
+                  ],
+                ),
+              )
+            ],
           ),
         ),
-        onTap: () {
-          _showOptions(context, index);
-        });
+      ),
+    );
   }
 
   void _showOptions(BuildContext context, int index) {
     showModalBottomSheet(
-        context: context,
-        builder: (context) {
-          return BottomSheet(
-            onClosing: () {},
-            builder: (context) {
-              return Container(
-                padding: EdgeInsets.all(10.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Padding(
-                      padding: EdgeInsets.all(10.0),
-                      child: FlatButton(
-                        child: Text(
-                          "Ligar",
-                          style: TextStyle(color: Colors.red, fontSize: 20.0),
-                        ),
-                        onPressed: () {
-                          launch("tel:${contacts[index].phone}");
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.all(10.0),
-                      child: FlatButton(
-                        child: Text(
-                          "Editar",
-                          style: TextStyle(color: Colors.red, fontSize: 20.0),
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _showContactPage(contact: contacts[index]);
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.all(10.0),
-                      child: FlatButton(
-                        child: Text(
-                          "Excluir",
-                          style: TextStyle(color: Colors.red, fontSize: 20.0),
-                        ),
-                        onPressed: () {
-                          helper.deleteContact(contacts[index].id);
-                          setState(() {
-                            contacts.removeAt(index);
-                            Navigator.pop(context);
-                          });
-                        },
-                      ),
-                    )
-                  ],
-                ),
-              );
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            title: Text("Ligar",
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 20.0)),
+            onTap: () {
+              launchUrl(Uri.parse("tel:${contacts[index].phone}"));
+              if (mounted) Navigator.pop(context);
             },
-          );
-        });
-  }
-
-  void _showContactPage({Contact contact}) async {
-    final recContact = await Navigator.push(context,
-        MaterialPageRoute(builder: (context) => ContactPage(contact: contact)));
-    if (recContact != null) {
-      if (contact != null) {
-        await helper.updateContact(recContact);
-      } else {
-        await helper.saveContact(recContact);
-      }
-      _getAllContacts();
-    }
-  }
-
-  void _getAllContacts() {
-    helper.getAllContacts().then((list) {
-      setState(() {
-        contacts = list;
-      });
-    });
-  }
-
-  void _orderList(OrderOptions result) {
-    switch (result) {
-      case OrderOptions.orderaz:
-        contacts.sort((a, b) {
-          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-        });
-        break;
-      case OrderOptions.orderza:
-        contacts.sort((a, b) {
-          return b.name.toLowerCase().compareTo(a.name.toLowerCase());
-        });
-        break;
-      default:
-    }
-    setState(() {});
+          ),
+          if (contacts[index].email?.isNotEmpty ?? false)
+            ListTile(
+              title: Text("Enviar E-mail",
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: 20.0)),
+              onTap: () {
+                final email = Uri.encodeComponent(contacts[index].email!);
+                final subject = Uri.encodeComponent("Contato via App");
+                final uri = Uri.parse("mailto:$email?subject=$subject");
+                launchUrl(uri);
+                if (mounted) Navigator.pop(context);
+              },
+            ),
+          ListTile(
+            title: Text("Editar",
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 20.0)),
+            onTap: () {
+              if (mounted) Navigator.pop(context);
+              _showContactPage(contact: contacts[index]);
+            },
+          ),
+          ListTile(
+            title: Text("Excluir",
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 20.0)),
+            onTap: () {
+              helper.deleteContact(contacts[index].id);
+              if (mounted) {
+                setState(() => contacts.removeAt(index));
+                Navigator.pop(context);
+              }
+            },
+          ),
+        ],
+      ),
+    );
   }
 }
